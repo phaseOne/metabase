@@ -3,6 +3,8 @@ import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
 import { t } from "ttag";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
+import { EmbeddingCustomizationInfo } from "./components/widgets/EmbeddingCustomizationInfo";
+import SettingsLicense from "./components/SettingsLicense";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
 import {
@@ -13,7 +15,6 @@ import {
 } from "./components/widgets/PublicLinksListing";
 import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
-import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
@@ -343,8 +344,9 @@ const SECTIONS = updateSectionsWithPlugins({
         getHidden: settings => !settings["enable-embedding"],
       },
       {
-        widget: EmbeddingLevel,
-        getHidden: settings => !settings["enable-embedding"],
+        widget: EmbeddingCustomizationInfo,
+        getHidden: settings =>
+          !settings["enable-embedding"] || MetabaseSettings.isEnterprise(),
       },
       {
         key: "embedding-secret-key",
@@ -397,6 +399,12 @@ const SECTIONS = updateSectionsWithPlugins({
         allowValueCollection: true,
       },
     ],
+  },
+  license: {
+    name: MetabaseSettings.isPaidPlan() ? t`License and billing` : t`License`,
+    order: 12,
+    component: SettingsLicense,
+    settings: [],
   },
 });
 

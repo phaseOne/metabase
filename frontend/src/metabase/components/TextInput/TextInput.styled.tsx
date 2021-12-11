@@ -1,5 +1,6 @@
 import styled, { css } from "styled-components";
 import { color } from "metabase/lib/colors";
+import { ColorScheme, Size } from "./TextInput";
 
 const PADDING = {
   sm: "0.5rem",
@@ -17,7 +18,15 @@ const BORDER_COLOR = {
   transparent: () => "transparent",
 };
 
-export const Input = styled.input`
+interface InputProps {
+  colorScheme: ColorScheme;
+  borderRadius: Size;
+  padding: Size;
+  hasClearButton?: boolean;
+  hasIcon?: boolean;
+}
+
+export const Input = styled.input<InputProps>`
   border: 1px solid ${props =>
     props.colorScheme === "transparent" ? "transparent" : color("border")};
   outline: none;
@@ -28,6 +37,10 @@ export const Input = styled.input`
   min-width: 200px;
   background-color: ${props =>
     props.colorScheme === "transparent" ? "transparent" : color("white")};
+
+  &:disabled {
+    background-color: ${color("bg-light")};
+  }
 
   ${({ borderRadius, padding }) => css`
     border-radius: ${BORDER_RADIUS[borderRadius]};

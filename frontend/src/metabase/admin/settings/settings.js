@@ -1,13 +1,20 @@
+import { t } from "ttag";
 import {
   createAction,
   createThunkAction,
   handleActions,
   combineReducers,
 } from "metabase/lib/redux";
-
-import { SettingsApi, EmailApi, SlackApi, LdapApi } from "metabase/services";
-
+import { addUndo } from "metabase/redux/undo";
+import {
+  SettingsApi,
+  EmailApi,
+  SlackApi,
+  LdapApi,
+  StoreApi,
+} from "metabase/services";
 import { refreshSiteSettings } from "metabase/redux/settings";
+import { LICENSE_ACCEPTED_URL_HASH } from "./constants";
 
 // ACITON TYPES AND ACTION CREATORS
 
@@ -150,6 +157,53 @@ export const updateLdapSettings = createThunkAction(
   },
 );
 
+export const FETCH_LICENSE = "metabase/admin/settings/FETCH_LICENSE";
+export const fetchLicense = createThunkAction(FETCH_LICENSE, () => async () => {
+  try {
+    const status = await StoreApi.tokenStatus();
+
+    return {
+      isValid: status.valid,
+      // TODO: update one the BE is ready
+      plan: "pro", //status.plan,
+    };
+  } catch (error) {
+    console.error("error fetching token status", error);
+    throw error;
+  }
+});
+
+export const UPDATE_LICENSE = "metabase/admin/settings/UPDATE_LICENSE";
+export const updateLicense = createThunkAction(
+  UPDATE_LICENSE,
+  license => async () => {
+    try {
+      await SettingsApi.put({ key: "premium-embedding-token", value: license });
+
+      // In order to apply pro and enterprise features we need to perform a full reload
+      window.location.href += LICENSE_ACCEPTED_URL_HASH;
+      window.location.reload();
+    } catch {
+      return {
+        error: t`This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.`,
+      };
+    }
+  },
+);
+
+export const SHOW_LICENSE_ACCEPTED_TOAST =
+  "metabase/admin/settings/SHOW_LICENSE_ACCEPTED_TOAST";
+export const showLicenseAcceptedToast = createThunkAction(
+  SHOW_LICENSE_ACCEPTED_TOAST,
+  () => dispatch => {
+    dispatch(
+      addUndo({
+        message: t`Your license is active!`,
+      }),
+    );
+  },
+);
+
 // REDUCERS
 
 export const warnings = handleActions(
@@ -168,7 +222,18 @@ const settings = handleActions(
   [],
 );
 
+const license = handleActions(
+  {
+    [FETCH_LICENSE]: { next: (_state, { payload }) => payload },
+    [UPDATE_LICENSE]: {
+      next: (state, { payload }) => ({ ...state, ...payload }),
+    },
+  },
+  null,
+);
+
 export default combineReducers({
   settings,
   warnings,
+  license,
 });
