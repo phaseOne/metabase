@@ -1,13 +1,12 @@
 import React from "react";
 import { t } from "ttag";
-import { Flex } from "grid-styled";
 import { PLUGIN_ADMIN_NAV_ITEMS } from "metabase/plugins";
 import MetabaseSettings from "metabase/lib/settings";
 import { AdminNavItem } from "./AdminNavItem";
 import Link from "metabase/components/Link";
 import StoreLink from "../StoreLink";
 import LogoIcon from "metabase/components/LogoIcon";
-import { AdminExitLink } from "./AdminNavbar.styled";
+import { AdminExitLink, AdminLogoContainer } from "./AdminNavbar.styled";
 
 interface AdminNavbarProps {
   path: string;
@@ -24,14 +23,10 @@ export const AdminNavbar = ({ path: currentPath }: AdminNavbarProps) => {
           data-metabase-event={"Navbar;Logo"}
           className="relative cursor-pointer z2 rounded flex justify-center ml2"
         >
-          <Flex
-            style={{ minWidth: 32, height: 32 }}
-            align="center"
-            justify="center"
-          >
+          <AdminLogoContainer>
             <LogoIcon className="text-brand my2" dark />
             <span className="NavItem-text ml2 hide lg-show text-bold">{t`Metabase Admin`}</span>
-          </Flex>
+          </AdminLogoContainer>
         </Link>
 
         <ul className="sm-ml4 flex flex-full">

@@ -19,3 +19,11 @@ export const AdminExitLink = styled(Link)`
     border-color: ${darken(color("accent7"))};
   }
 `;
+
+export const AdminLogoContainer = styled.div`
+  display: flex;
+  min-width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+`;
