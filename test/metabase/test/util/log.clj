@@ -2,6 +2,7 @@
   "Utils for controlling the logging that goes on when running tests."
   (:require [clojure.test :refer :all]
             [clojure.tools.logging :as log]
+            [clojure.tools.logging.impl :as log.impl]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [schema.core :as s])
   (:import java.io.PrintStream
@@ -99,17 +100,19 @@
             k))
         keyword->Level))
 
-(defn- logger-context ^LoggerContext []
-  (LogManager/getContext true))
+(defn- logger-context ^LoggerContext [^Logger logger]
+  (.getContext logger))
 
-(defn- configuration ^Configuration []
-  (.getConfiguration (logger-context)))
+(defn- configuration ^Configuration [^Logger logger]
+  (.getConfiguration (logger-context logger)))
+
+(def ^:private tools-logging-factory (delay (log.impl/log4j2-factory)))
 
 (defn- effective-ns-logger
   "Get the logger that will be used for the namespace named by `ns-symb`."
-  ^LoggerConfig [ns-symb]
+  ^Logger [ns-symb]
   {:pre [(symbol? ns-symb)]}
-  (.getLoggerConfig (configuration) (name ns-symb)))
+  (log.impl/get-logger @tools-logging-factory ns-symb))
 
 (s/defn ns-log-level :- LogLevelKeyword
   "Get the log level currently applied to the namespace named by symbol `ns-symb`. `ns-symb` may be a symbol that names
@@ -120,13 +123,16 @@
   [ns-symb]
   (log-level->keyword (.getLevel (effective-ns-logger ns-symb))))
 
+(defn- logger-config ^LoggerConfig [^Logger logger]
+  (.get logger))
+
 (defn- logger-name
-  ^String [^LoggerConfig logger]
-  (.getName logger))
+  ^String [^Logger logger]
+  (.getName (logger-config logger)))
 
 (defn- exact-ns-logger
   "Get the logger defined for `ns-symb` if it is an exact match; otherwise `nil` if a 'parent' logger will be used."
-  ^LoggerConfig [ns-symb]
+  ^Logger [ns-symb]
   (let [logger (effective-ns-logger ns-symb)]
     (when (= (logger-name logger) (name ns-symb))
       logger)))
@@ -134,30 +140,24 @@
 (defn- get-or-create-ns-logger!
   "Get the logger currently used for `ns-symb`. If this logger is a parent logger, create a new logger specifically for
   this namespace and return that."
-  ^LoggerConfig [ns-symb]
+  ^Logger [ns-symb]
   (or (exact-ns-logger ns-symb)
-      (let [parent-logger (effective-ns-logger ns-symb)
-            new-logger    (LoggerConfig/createLogger
-                           (.isAdditive parent-logger)
-                           (.getLevel parent-logger)
-                           (name ns-symb)
-                           (str (.isIncludeLocation parent-logger))
-                           ^"[Lorg.apache.logging.log4j.core.config.AppenderRef;"
-                           (into-array org.apache.logging.log4j.core.config.AppenderRef (.getAppenderRefs parent-logger))
-                           ^"[Lorg.apache.logging.log4j.core.config.Property;"
-                           (into-array org.apache.logging.log4j.core.config.Property (.getPropertyList parent-logger))
-                           (configuration)
-                           (.getFilter parent-logger))]
-        (.addLogger (configuration) (name ns-symb) new-logger)
+      (let [parent-logger     (effective-ns-logger ns-symb)
+            parent-config     (logger-config parent-logger)
+            new-logger-config (LoggerConfig/createLogger
+                               (.isAdditive parent-logger)
+                               (.getLevel parent-logger)
+                               (name ns-symb)
+                               (str (.isIncludeLocation parent-config))
+                               ^"[Lorg.apache.logging.log4j.core.config.AppenderRef;"
+                               (into-array org.apache.logging.log4j.core.config.AppenderRef (.getAppenderRefs parent-config))
+                               ^"[Lorg.apache.logging.log4j.core.config.Property;"
+                               (into-array org.apache.logging.log4j.core.config.Property (.getPropertyList parent-config))
+                               (configuration parent-logger)
+                               (.getFilter parent-config))]
+        (.addLogger (configuration parent-logger) (name ns-symb) new-logger-config)
         (println "Created a new logger for" ns-symb)
-        new-logger)))
-
-(defn- logger-info [^LoggerConfig logger]
-  {:additive?         (.isAdditive logger)
-   :include-location? (.isIncludeLocation logger)
-   :level             (log-level->keyword (.getLevel logger))
-   :name              (.getName logger)
-   :properties        (.getProperties logger)})
+        (effective-ns-logger ns-symb))))
 
 (s/defn set-ns-log-level!
   "Set the log level for the namespace named by `ns-symb`. Intended primarily for REPL usage; for tests,
@@ -172,8 +172,8 @@
   ([ns-symb new-level :- LogLevelKeyword]
    (let [logger    (get-or-create-ns-logger! ns-symb)
          new-level (->Level new-level)]
-     (.setLevel logger new-level)
-     (.updateLoggers (logger-context)))))
+     (.setLevel (logger-config logger) new-level)
+     (.updateLoggers (logger-context logger)))))
 
 (defn do-with-log-messages-for-level [x thunk]
   (test-runner.parallel/assert-test-is-not-parallel "with-log-level")
