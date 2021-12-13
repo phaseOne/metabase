@@ -368,9 +368,15 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
+  license: {
+    name: MetabaseSettings.isPaidPlan() ? t`License and billing` : t`License`,
+    order: 11,
+    component: SettingsLicense,
+    settings: [],
+  },
   caching: {
     name: t`Caching`,
-    order: 11,
+    order: 12,
     settings: [
       {
         key: "enable-query-caching",
@@ -400,12 +406,6 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-  license: {
-    name: MetabaseSettings.isPaidPlan() ? t`License and billing` : t`License`,
-    order: 12,
-    component: SettingsLicense,
-    settings: [],
-  },
 });
 
 export const getSettings = createSelector(
@@ -419,43 +419,52 @@ export const getSettings = createSelector(
     ),
 );
 
-export const getSettingValues = createSelector(getSettings, settings => {
-  const settingValues = {};
-  for (const setting of settings) {
-    settingValues[setting.key] = setting.value;
-  }
-  return settingValues;
-});
+export const getSettingValues = createSelector(
+  getSettings,
+  settings => {
+    const settingValues = {};
+    for (const setting of settings) {
+      settingValues[setting.key] = setting.value;
+    }
+    return settingValues;
+  },
+);
 
-export const getNewVersionAvailable = createSelector(getSettings, settings => {
-  return MetabaseSettings.newVersionAvailable(settings);
-});
+export const getNewVersionAvailable = createSelector(
+  getSettings,
+  settings => {
+    return MetabaseSettings.newVersionAvailable(settings);
+  },
+);
 
-export const getSections = createSelector(getSettings, settings => {
-  if (!settings || _.isEmpty(settings)) {
-    return {};
-  }
+export const getSections = createSelector(
+  getSettings,
+  settings => {
+    if (!settings || _.isEmpty(settings)) {
+      return {};
+    }
 
-  const settingsByKey = _.groupBy(settings, "key");
-  const sectionsWithAPISettings = {};
-  for (const [slug, section] of Object.entries(SECTIONS)) {
-    const settings = section.settings.map(function(setting) {
-      const apiSetting =
-        settingsByKey[setting.key] && settingsByKey[setting.key][0];
-      if (apiSetting) {
-        return {
-          placeholder: apiSetting.default,
-          ...apiSetting,
-          ...setting,
-        };
-      } else {
-        return setting;
-      }
-    });
-    sectionsWithAPISettings[slug] = { ...section, settings };
-  }
-  return sectionsWithAPISettings;
-});
+    const settingsByKey = _.groupBy(settings, "key");
+    const sectionsWithAPISettings = {};
+    for (const [slug, section] of Object.entries(SECTIONS)) {
+      const settings = section.settings.map(function(setting) {
+        const apiSetting =
+          settingsByKey[setting.key] && settingsByKey[setting.key][0];
+        if (apiSetting) {
+          return {
+            placeholder: apiSetting.default,
+            ...apiSetting,
+            ...setting,
+          };
+        } else {
+          return setting;
+        }
+      });
+      sectionsWithAPISettings[slug] = { ...section, settings };
+    }
+    return sectionsWithAPISettings;
+  },
+);
 
 export const getActiveSectionName = (state, props) => props.params.splat;
 
